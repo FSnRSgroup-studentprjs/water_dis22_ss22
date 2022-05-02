@@ -36,11 +36,6 @@ print('tf v', tf.__version__)
 #to do: try non eager execution graph?
 print('tf eager execution', tf.executing_eagerly())
 
-#turn off cryptic warnings
-#https://github.com/tensorflow/tensorflow/issues/27023
-#Thanks @Mrs Przibylla
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
 # do not assign complete gpu-memory but grow it as needed
 # allows to run multiple models at once (otherwise whole gpu memory gets allocated/gpu gets blocked)
 gpus = tf.config.experimental.list_physical_devices('GPU')

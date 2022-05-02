@@ -13,6 +13,11 @@ gpus = [1]
 ########################################################################################################################
 #handles verbosity of the program (use 1 or above to get feedback!)
 verbose = 1
+#turn off cryptic warnings
+#https://github.com/tensorflow/tensorflow/issues/27023
+#Thanks @Mrs Przibylla
+#'1' = Infos, '2' = warnings, '3' = Errors
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 ########################################################################################################################
 #                                           Base Folder

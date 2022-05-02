@@ -4,9 +4,9 @@ import os
 #                                   Performance Settings, Multi-GPU-usage
 ########################################################################################################################
 # list of gpus to use
-# (only use 2 GPUs tops!) Otherwise I will kill your process!
+# (only use 1 GPU!) Otherwise I will kill your process!
 # We all need to calculate on this machine - might get lowered to one, if there are bottlenecks!
-gpus = [1]
+gpus = [0]
 
 ########################################################################################################################
 #                                           Verbosity settings
@@ -57,7 +57,7 @@ channel_size = len(channels)
 #                                  Basic neural network parameters
 ########################################################################################################################
 ### Maximum amount of epochs
-epochs = 2
+epochs = 50
 ### Learning rate (to start with - might get dynamically lowered with callback options)
 lr = 1e-4
 # How many pictures are used to train before readjusting weights

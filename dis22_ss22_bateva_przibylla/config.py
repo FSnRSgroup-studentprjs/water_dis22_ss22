@@ -1,3 +1,10 @@
+"""
+Batch Size auf 32 stellen (config.py)! Dann sollten Sie 2 GPUs (0, 1) verwenden und alle gleichzeitig rechnen können. (Achtung: ungetestet! Sind aber ja nur noch Fr. Przibylla und Fr. Bateva)
+
+Vereinigung der Testroutinen --> Przibylla, Bateva
+Ziel: Ein Skript mit allen Testroutinen
+"""
+
 import os
 
 ########################################################################################################################
@@ -57,14 +64,17 @@ channel_size = len(channels)
 #                                  Basic neural network parameters
 ########################################################################################################################
 ### Maximum amount of epochs
-epochs = 1
+epochs = 5
 ### Learning rate (to start with - might get dynamically lowered with callback options)
-lr = 1e-4
+lr = 0.001 #1e-4
+# Learning rate decay (used to get rid of the noise)
+###decay = 1
+###lr_decay = (1/(1 + decay * epochs)) * lr
 # How many pictures are used to train before readjusting weights
-batch_size = 128
+batch_size = 32
 ### The model to use
 # available are vgg16/19, resnet50/152, inceptionv3, xception, densnet121/201
-model_name = 'vgg19'
+model_name = 'vgg16'
 # loss function
 loss = 'categorical_crossentropy'
 # chose your optimizer
@@ -88,9 +98,16 @@ cnn_settings_d = {'include_top': False, 'weights': 'imagenet', 'input_tensor': N
                   #'classifier_activation': 'softmax'}
 # Use dropout on top layers - use 0 to 100 (percent)
 dropout_top_layers = 0
+
 # Make weights trainable. Unfreezes layers beginning at top layers. Use 0 to 100 (percent)
-unfreeze_layers_perc = 100
-### Use custom top layers (necessary when using transferlearning)
+### Dictionary containing values
+unfreeze_dict = {"unfreeze_layers_perc": 86, # Use custom top layers (necessary when using transferlearning)
+          "unfreeze_at": 17,
+          "unfreeze_blocks": ["block4"]}
+
+unfreeze_type = list(unfreeze_dict)[0]
+unfreeze_epochs = int(epochs/2)
+
 # 2 layers right now. Their neurons can be adjusted
 add_custom_top_layers = True
 # define how many hidden layers shall be added as top layers (len(neurons_l)) and how many neurons they should have (int)
@@ -141,22 +158,22 @@ zca_whitening_perc_fit = 1
 IDG_augmentation_settings_d = {'subset1': {
         #'brightness_range': [0.9, 1.1], #Tuple or list of two floats. Range for picking a brightness shift value from.
         'shear_range': 0.2, #Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
-        #'zoom_range': 0.2,
+        'zoom_range': 0.8,
         #'channel_shift_range': 0.3,
         'horizontal_flip': True,
         'vertical_flip': True,
         #'rotation_range': 20, #Int. Degree range for random rotations.
-        'width_shift_range': 0.2,
-        'height_shift_range': 0.2
+        #'width_shift_range': 0.2,
+        #'height_shift_range': 0.2
         }}
-
-
 ########################################################################################################################
 #                               Continuing from earlier runs
 ########################################################################################################################
 ### False or modelcheckp(oint) folder from which to load weights
 load_model_weights = False
+
 #os.path.join(base_folder, "Projects/water/trainHistory_augmentation/0206/68acc_vgg19img_net_momentum0.9_optimizerSGD_brightness_0.9_1.1shear_0.2channel_shift_0.3horizontal_flip_vertical_flip__1/modelcheckp/")
+
 
 
 ########################################################################################################################
@@ -170,3 +187,15 @@ reload_best_weights_for_eval = True
 # False or Number of images (for train, val and test gen)
 save_augmented_images = 15
 tensorboard = True
+
+########################################################################################################################
+#                                           Testsetting
+########################################################################################################################
+learning_rate_testing = True
+
+if learning_Rate_testing == True
+    cfg.lr = [0.001, 1e-4, 0.001]
+    if __name__ == "__main__":
+        main()
+
+print("Best result:", lr)

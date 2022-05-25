@@ -98,7 +98,7 @@ def create_run_folders(augmentation_d, normalization_d, prj_path, trainHistory_s
     
     #create base name
     run_name = cfg.model_name + cfg.run_name_custom_string + '_w' + \
-                           str(cfg.cnn_settings_d['weights']) + '_unfl' + str(cfg.unfreeze_layers_perc) + \
+                           str(cfg.cnn_settings_d['weights']) + '_unfl' + \
                            '_d' + str(cfg.dropout_top_layers) + '_lr' + str(cfg.lr)
     if cfg.auto_adjust_lr[0]:
         run_name += '_adjustlr'
@@ -129,7 +129,7 @@ def optimizer_loading():
     if cfg.optimizer == "SGD":
         # from transferLearning.py
         optimizer = tf.keras.optimizers.SGD(learning_rate=cfg.lr, momentum=cfg.momentum, nesterov=False,
-                                            name="SGD")
+                                            name="SGD") #decay=cfg.lr
     elif cfg.optimizer == "Adam":
         # from transferLearning.py
         optimizer = optimizers.Adam(lr=cfg.lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
@@ -213,12 +213,15 @@ def model_loader():
         raise NotImplementedError("The model you want is not implemented right now", cfg.model_name)
 
     # Add custom Top Layers (Imagenet has 1000nds of classes - we need 3!)
+    # 'include_top' false -> do not take top layers
+
     if cfg.cnn_settings_d['include_top'] is False and cfg.add_custom_top_layers:
-        base_model = nnm.add_classification_top_layer(base_model, cfg.cnn_settings_d['classes'], cfg.neurons_l,
-                                                      cfg.dropout_top_layers, cfg.unfreeze_layers_perc)
-        print('Final Model with added top layers', type(base_model), 'layers', len(base_model.layers),
-              'of which', round(len(base_model.layers) * cfg.unfreeze_layers_perc / 100), 'are unfroozen or ',
-              cfg.unfreeze_layers_perc, '%')
+        base_model = nnm.add_classification_top_layer(base_model, cfg.cnn_settings_d['classes'], cfg.neurons_l, cfg.unfreeze_dict, cfg.unfreeze_type,
+                                                      cfg.dropout_top_layers)
+    print('Final Model with added top layers', len(base_model.layers),
+              'with the setting',  cfg.unfreeze_type)
+    print("Number of layers in the base model: ", len(base_model.layers))
+
     return base_model
 
 
@@ -378,8 +381,8 @@ def main():
                 if cfg.load_model_weights:
                     model.load_weights(cfg.load_model_weights)
                 if cfg.verbose:
-                    print('Final Model', type(model))
-                    print(model.summary())
+                    print('Final Model', type(model), model.name)
+                    print(model.summary(show_trainable = True))
 
             if cfg.generator == 'ImageDataGenerator':
                 datagen_train, datagen_val, datagen_test = IDG_creator(train_x, train_y, val_x, val_y, test_x, test_y,
@@ -397,14 +400,34 @@ def main():
             # train_ds = train_ds.with_options(options)
             # val_ds = val_ds.with_options(options)
             # test_ds = test_ds.with_options(options)
-            history = model.fit(
-                                datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
-                                class_weight=class_weights,
-                                validation_data=datagen_val.flow(val_x, val_y,
-                                                                 batch_size=cfg.batch_size, shuffle=True),
-                                #datagen.flow_from_dataframe(val_ds),
-                                epochs=cfg.epochs,
-                                callbacks=callbacks_l)
+
+            def model_fit():
+                model.fit(datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
+                          class_weight=class_weights,
+                          validation_data=datagen_val.flow(val_x, val_y,
+                                                           batch_size=cfg.batch_size, shuffle=True),
+                          # datagen.flow_from_dataframe(val_ds),
+                          epochs=cfg.epochs,
+                          callbacks=callbacks_l)
+
+            if cfg.unfreeze_epochs:
+                cfg.epochs = cfg.unfreeze_epochs
+
+                for layer in model.layers:
+                    layer_name = str(layer.name)
+                    layer_name = layer_name.split("_")[0]
+                    if layer_name == 'dense':
+                        layer.trainable = True
+                    else:
+                        layer.trainable = False
+
+                history = model_fit()
+                model.trainable = True
+
+                history += model_fit()
+            else:
+                history = model_fit
+
             fit_time = time.time() - t_begin
             if cfg.verbose:
                 print('Time to fit model (s)', fit_time)
@@ -507,9 +530,5 @@ def main():
                     print(k, v)
                 writer.writerow(report_d)
 
-
 if __name__ == "__main__":
     main()
-
-
-

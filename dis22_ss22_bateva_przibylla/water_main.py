@@ -402,10 +402,10 @@ def main():
             # test_ds = test_ds.with_options(options)
 
             def model_fit():
-                model.fit(datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
+                return model.fit(datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
                           class_weight=class_weights,
                           validation_data=datagen_val.flow(val_x, val_y,
-                                                           batch_size=cfg.batch_size, shuffle=True),
+                          batch_size=cfg.batch_size, shuffle=True),
                           # datagen.flow_from_dataframe(val_ds),
                           epochs=cfg.epochs,
                           callbacks=callbacks_l)
@@ -424,9 +424,12 @@ def main():
                 history = model_fit()
                 model.trainable = True
 
-                history += model_fit()
+                model_fit()
+
             else:
                 history = model_fit
+
+            print(history.history.keys())
 
             fit_time = time.time() - t_begin
             if cfg.verbose:
@@ -529,6 +532,10 @@ def main():
                 for k, v in report_d.items():
                     print(k, v)
                 writer.writerow(report_d)
+
+
+
+
 
 if __name__ == "__main__":
     main()

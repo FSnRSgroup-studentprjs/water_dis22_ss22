@@ -6,7 +6,11 @@ Ziel: Ein Skript mit allen Testroutinen
 """
 
 import os
-
+import test_routines as tr
+########################################################################################################################
+#                                                   Mode
+########################################################################################################################
+testing = True
 ########################################################################################################################
 #                                   Performance Settings, Multi-GPU-usage
 ########################################################################################################################
@@ -64,12 +68,12 @@ channel_size = len(channels)
 #                                  Basic neural network parameters
 ########################################################################################################################
 ### Maximum amount of epochs
-epochs = 5
+epochs = 1
 ### Learning rate (to start with - might get dynamically lowered with callback options)
 lr = 0.001 #1e-4
 # Learning rate decay (used to get rid of the noise)
-###decay = 1
-###lr_decay = (1/(1 + decay * epochs)) * lr
+decay = 1
+lr_decay = (1/(1 + decay * epochs)) * lr
 # How many pictures are used to train before readjusting weights
 batch_size = 32
 ### The model to use
@@ -191,11 +195,16 @@ tensorboard = True
 ########################################################################################################################
 #                                           Testsetting
 ########################################################################################################################
-learning_rate_testing = True
+if testing == True:
+    unfreeze_layers_perc, dropout_top_layers, lr, IDG_augmentation_settings_d = tr.generate_random_cnn()
 
-if learning_Rate_testing == True
-    cfg.lr = [0.001, 1e-4, 0.001]
-    if __name__ == "__main__":
-        main()
+"""
+def testing_multiple():
 
-print("Best result:", lr)
+def create_5():
+
+def quick_test():
+
+
+rand
+"""

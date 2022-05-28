@@ -6,6 +6,7 @@ Ziel: Ein Skript mit allen Testroutinen
 """
 
 import os
+import itertools
 import test_routines as tr
 ########################################################################################################################
 #                                                   Mode
@@ -39,7 +40,7 @@ base_folder = '/mnt/datadisk/data/'
 prj_folder = '/mnt/datadisk/data/Projects/water_dis22_ss22/'
 # train history will be saved in a subfolder of the project path (base_folder + /projects/water/)
 # assign a name according to your group, to separate your results from all others! Create this folder manually!
-trainHistory_subname = 'trainHistory_bateva_przibylla'
+trainHistory_subname = 'trainHistory_bateva_przibylla_test'
 
 ########################################################################################################################
 #                                            Run Name
@@ -195,8 +196,10 @@ tensorboard = True
 ########################################################################################################################
 #                                           Testsetting
 ########################################################################################################################
+
 if testing == True:
     unfreeze_layers_perc, dropout_top_layers, lr, IDG_augmentation_settings_d = tr.generate_random_cnn()
+    
 
 """
 def testing_multiple():
@@ -205,6 +208,73 @@ def create_5():
 
 def quick_test():
 
-
-rand
+print("Best result:", lr)
 """
+
+"""
+def generate_random_param():
+    #optimization_methods = ['adagrad', 'rmsprop', 'adadelta', 'adam', 'adamax', 'nadam']      # possible optimization methods
+    #activation_functions = ['sigmoid', 'relu', 'tanh']          # possible activation functions
+    #batch_sizes = [16, 32, 64, 128, 256, 512]                   # possible batch sizes
+    #range_hidden_units = range(5, 250)                          # range of possible hidden units
+    model_info_test_param = {}                                             # create hash table
+    #same_units = np.random.choice([0, 1], p=[1/5, 4/5])         # dictates whether all hidden layers will have the same number of units
+    #same_act_fun = np.random.choice([0, 1], p=[1/10, 9/10])     # will each hidden layer have the same activation function?
+    #really_deep = np.random.rand()
+    #range_layers = range(1, 10) if really_deep < 0.8 else range(6, 20)          # 80% of time constrain number of hidden layers between 1 - 10, 20% of time permit really deep architectures
+    #num_layers = np.random.choice(range_layers, p=[.1, .2, .2, .2, .05, .05, .05, .1, .05]) if really_deep < 0.8 else np.random.choice(range_layers)    # choose number of layers
+    #model_info["Activations"] = [np.random.choice(activation_functions, p = [0.25, 0.5, 0.25])] * num_layers if same_act_fun else [np.random.choice(activation_functions, p = [0.25, 0.5, 0.25]) for _ in range(num_layers)] # choose activation functions
+    #model_info["Hidden layers"] = [np.random.choice(range_hidden_units)] * num_layers if same_units else [np.random.choice(range_hidden_units) for _ in range(num_layers)]  # create hidden layers
+    #model_info["Optimization"] = np.random.choice(optimization_methods)         # choose an optimization method at random
+    #model_info["Batch size"] = np.random.choice(batch_sizes)                    # choose batch size
+    model_info_test_param["Learning Rate"] = 10 ** (-4 * np.random.rand())                 # choose a learning rate on a logarithmic scale
+    #model_info["Training threshold"] = 0.5
+    # set threshold for training
+    model_info_test_param["Dropout_Test"] = np.random.randint(0, 101)
+    return model_info_test_param
+
+
+if param_testing:
+    if __name__ == '__main__':
+        ...
+else:
+    if __name__ == '__main__':
+        ....
+
+
+
+learning_rates = [0.001, 0.01, 0.1, 1e-4]
+unfreeze_layers_perc_test = random.randrange(80, 100)
+dropout_top_layers_test = random.randrange(20, 50, 10)
+lr_test = np.random.choice(learning_rates)
+IDG_augmentation_settings_d_test = {'subset1': {
+    # 'brightness_range': [0.9, 1.1], #Tuple or list of two floats. Range for picking a brightness shift value from.
+    'shear_range': 0.2,  # Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
+    'zoom_range': round(random.uniform(0.8, 1.2), 1),
+    # 'channel_shift_range': 0.3,
+    'horizontal_flip': random.choice([True, False]),
+    'vertical_flip': random.choice([True, False]),
+    # 'rotation_range': 20, #Int. Degree range for random rotations.
+    # 'width_shift_range': 0.2,
+    # 'height_shift_range': 0.2
+}}
+"""
+model_test_param = {"learning_rates": [0.001, 0.01, 0.1, 1e-4],
+                    "dropout_top_layers": [20, 30, 40, 50],
+                    "unfreezed_layers_perc": [20, 30, 40, 50],
+                    "IDG_augmentation_settings_d": {'subset1': {
+                        #'brightness_range': [0.9, 1.1], #Tuple or list of two floats. Range for picking a brightness shift value from.
+                        'shear_range': 0.2, #Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
+                        'zoom_range': 0.8,
+                        #'channel_shift_range': 0.3,
+                        'horizontal_flip': True,
+                        'vertical_flip': True,
+                        #'rotation_range': 20, #Int. Degree range for random rotations.
+                        #'width_shift_range': 0.2,
+                        #'height_shift_range': 0.2
+                     }}
+                    }
+
+keys, values = zip(*model_test_param.items())
+list_all_param_combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+

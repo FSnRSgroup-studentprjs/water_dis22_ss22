@@ -7,6 +7,11 @@ Ziel: Ein Skript mit allen Testroutinen
 
 import os
 import itertools
+import test_routines as tr
+########################################################################################################################
+#                                                   Mode
+########################################################################################################################
+testing = True
 ########################################################################################################################
 #                                   Performance Settings, Multi-GPU-usage
 ########################################################################################################################
@@ -68,8 +73,8 @@ epochs = 1
 ### Learning rate (to start with - might get dynamically lowered with callback options)
 lr = 0.001 #1e-4
 # Learning rate decay (used to get rid of the noise)
-###decay = 1
-###lr_decay = (1/(1 + decay * epochs)) * lr
+decay = 1
+lr_decay = (1/(1 + decay * epochs)) * lr
 # How many pictures are used to train before readjusting weights
 batch_size = 32
 ### The model to use
@@ -192,24 +197,21 @@ tensorboard = True
 #                                           Testsetting
 ########################################################################################################################
 
-"""
-lr_testing = True
+if testing == True:
+    unfreeze_layers_perc, dropout_top_layers, lr, IDG_augmentation_settings_d = tr.generate_random_cnn()
+    
 
-if learning_Rate_testing == True
-    cfg.lr = [0.001, 1e-4, 0.001]
-    if __name__ == "__main__":
-        main()
+"""
+def testing_multiple():
+
+def create_5():
+
+def quick_test():
 
 print("Best result:", lr)
+"""
 
-### Learning rate (to start with - might get dynamically lowered with callback options)
-lr = 0.001
-# Learning rate decay (used to get rid of the noise)
-decay = 1
-lr_decay_testing = (1/(1 + decay * epochs)) * lr_testing
-
-dropout_top_layers_testing = True
-
+"""
 def generate_random_param():
     #optimization_methods = ['adagrad', 'rmsprop', 'adadelta', 'adam', 'adamax', 'nadam']      # possible optimization methods
     #activation_functions = ['sigmoid', 'relu', 'tanh']          # possible activation functions
@@ -231,15 +233,15 @@ def generate_random_param():
     model_info_test_param["Dropout_Test"] = np.random.randint(0, 101)
     return model_info_test_param
 
+
 if param_testing:
     if __name__ == '__main__':
         ...
 else:
     if __name__ == '__main__':
         ....
-"""
-"""
-test_mode = True
+
+
 
 learning_rates = [0.001, 0.01, 0.1, 1e-4]
 unfreeze_layers_perc_test = random.randrange(80, 100)
@@ -257,8 +259,6 @@ IDG_augmentation_settings_d_test = {'subset1': {
     # 'height_shift_range': 0.2
 }}
 """
-
-
 model_test_param = {"learning_rates": [0.001, 0.01, 0.1, 1e-4],
                     "dropout_top_layers": [20, 30, 40, 50],
                     "unfreezed_layers_perc": [20, 30, 40, 50],
@@ -277,3 +277,4 @@ model_test_param = {"learning_rates": [0.001, 0.01, 0.1, 1e-4],
 
 keys, values = zip(*model_test_param.items())
 list_all_param_combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+

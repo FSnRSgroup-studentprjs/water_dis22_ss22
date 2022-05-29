@@ -1,17 +1,7 @@
-"""
-Batch Size auf 32 stellen (config.py)! Dann sollten Sie 2 GPUs (0, 1) verwenden und alle gleichzeitig rechnen können. (Achtung: ungetestet! Sind aber ja nur noch Fr. Przibylla und Fr. Bateva)
-
-Vereinigung der Testroutinen --> Przibylla, Bateva
-Ziel: Ein Skript mit allen Testroutinen
-"""
-
 import os
+import numpy as np
+import random
 import itertools
-import test_routines as tr
-########################################################################################################################
-#                                                   Mode
-########################################################################################################################
-testing = True
 ########################################################################################################################
 #                                   Performance Settings, Multi-GPU-usage
 ########################################################################################################################
@@ -40,7 +30,7 @@ base_folder = '/mnt/datadisk/data/'
 prj_folder = '/mnt/datadisk/data/Projects/water_dis22_ss22/'
 # train history will be saved in a subfolder of the project path (base_folder + /projects/water/)
 # assign a name according to your group, to separate your results from all others! Create this folder manually!
-trainHistory_subname = 'trainHistory_bateva_przibylla_test'
+trainHistory_subname = 'trainHistory_bateva_przibylla'
 
 ########################################################################################################################
 #                                            Run Name
@@ -50,7 +40,6 @@ trainHistory_subname = 'trainHistory_bateva_przibylla_test'
 # are saved
 # run_name_custom_string is a custom string you can provide to add to the run name
 run_name_custom_string = ''
-
 
 ########################################################################################################################
 #                                       Dataset parameters
@@ -103,22 +92,17 @@ cnn_settings_d = {'include_top': False, 'weights': 'imagenet', 'input_tensor': N
                   #'classifier_activation': 'softmax'}
 # Use dropout on top layers - use 0 to 100 (percent)
 dropout_top_layers = 0
-
 # Make weights trainable. Unfreezes layers beginning at top layers. Use 0 to 100 (percent)
 ### Dictionary containing values
 unfreeze_dict = {"unfreeze_layers_perc": 86, # Use custom top layers (necessary when using transferlearning)
-          "unfreeze_at": 17,
-          "unfreeze_blocks": ["block4"]}
-
+          "unfreeze_at": 17}
 unfreeze_type = list(unfreeze_dict)[0]
 unfreeze_epochs = int(epochs/2)
-
+### Use custom top layers (necessary when using transferlearning)
 # 2 layers right now. Their neurons can be adjusted
 add_custom_top_layers = True
 # define how many hidden layers shall be added as top layers (len(neurons_l)) and how many neurons they should have (int)
 neurons_l = [1024, 512]
-
-
 
 ########################################################################################################################
 #                                       Callback options
@@ -163,22 +147,22 @@ zca_whitening_perc_fit = 1
 IDG_augmentation_settings_d = {'subset1': {
         #'brightness_range': [0.9, 1.1], #Tuple or list of two floats. Range for picking a brightness shift value from.
         'shear_range': 0.2, #Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
-        'zoom_range': 0.8,
+        #'zoom_range': 0.2,
         #'channel_shift_range': 0.3,
         'horizontal_flip': True,
         'vertical_flip': True,
         #'rotation_range': 20, #Int. Degree range for random rotations.
-        #'width_shift_range': 0.2,
-        #'height_shift_range': 0.2
+        'width_shift_range': 0.2,
+        'height_shift_range': 0.2
         }}
+
+
 ########################################################################################################################
 #                               Continuing from earlier runs
 ########################################################################################################################
 ### False or modelcheckp(oint) folder from which to load weights
 load_model_weights = False
-
 #os.path.join(base_folder, "Projects/water/trainHistory_augmentation/0206/68acc_vgg19img_net_momentum0.9_optimizerSGD_brightness_0.9_1.1shear_0.2channel_shift_0.3horizontal_flip_vertical_flip__1/modelcheckp/")
-
 
 
 ########################################################################################################################
@@ -194,12 +178,93 @@ save_augmented_images = 15
 tensorboard = True
 
 ########################################################################################################################
-#                                           Testsetting
+#                                                   Testsettings
 ########################################################################################################################
+testing = True
+mode = random #all
 
-if testing == True:
-    unfreeze_layers_perc, dropout_top_layers, lr, IDG_augmentation_settings_d = tr.generate_random_cnn()
-    
+test_lr = True
+test_unfreeze_layers_perc = True
+test_dropout_top_layers = True
+test_IDG_augmentation_settings_d = True
+
+test_epochs = 25
+########################################################################################################################
+#                                                   Testcode
+########################################################################################################################
+def generate_all_param_combinations():
+    model_test_param = {"learning_rates": [0.001, 0.01, 0.1, 1e-4],
+                        "dropout_top_layers": [0.2, 0.3, 0.4, 0.5],
+                        "unfreezed_layers_perc": [80, 85, 90, 95, 100]}
+
+    keys, values = zip(*model_test_param.items())
+    param_combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+
+    IDG_augmentation_settings_d_params = {
+        'brightness_range': [[0.9, 1.1]],
+        'shear_range': [0.2],  # Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
+        'zoom_range': [0.8],
+        'channel_shift_range': [0.3],
+        'horizontal_flip': [True, False],
+        'vertical_flip': [True, False],  # Degree range for random rotations.
+        'width_shift_range': [0.2],
+        'height_shift_range': [0.2]}
+
+    keys, values = zip(*IDG_augmentation_settings_d_params.items())
+    param_combinations_aug = [dict(zip(keys, v)) for v in itertools.product(*values)]
+
+    list_all_param_combinations = []
+    for param_combination in param_combinations:
+        for param_combination_aug in param_combinations_aug:
+            param_combination['IDG_augmentation_settings_d'] = param_combination_aug
+            param_combination = param_combination
+            list_all_param_combinations.append(param_combination)
+
+    return list_all_param_combinations
+
+def generate_random_param_combinations():
+    list_all_param_combinations = generate_all_param_combinations()
+    random_candidate = random.randrange(0, len(list_all_param_combinations))
+    param_combination = list_all_param_combinations[random_candidate]
+    lr = param_combination['learning_rates']
+    dropout_top_layers = param_combination['dropout_top_layers']
+    unfreezed_layers_perc = param_combination['unfreezed_layers_perc']
+
+    IDG_augmentation_settings_d = {'subset1': {
+        #'brightness_range': [0.9, 1.1], #Tuple or list of two floats. Range for picking a brightness shift value from.
+        'shear_range': 0.2, #Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
+        'zoom_range': round(random.uniform(0.8, 1.2), 1),
+        #'channel_shift_range': 0.3,
+        'horizontal_flip': True,
+        'vertical_flip': True,
+        #'rotation_range': 20, #Int. Degree range for random rotations.
+        #'width_shift_range': 0.2,
+        #'height_shift_range': 0.2
+        }}
+    return unfreezed_layers_perc, dropout_top_layers, lr, IDG_augmentation_settings_d
+
+
+if testing:
+    if mode == random:
+        random_param_combinations = generate_random_param_combinations()
+        if test_unfreeze_layers_perc:
+            unfreeze_layers_perc = random_param_combinations[0]
+        if test_dropout_top_layers:
+            dropout_top_layers = random_param_combinations[1]
+        if test_lr:
+            lr = random_param_combinations[2]
+        if test_IDG_augmentation_settings_d:
+            IDG_augmentation_settings_d = random_param_combinations[3]
+    elif mode == all:
+        for param_combination in list_all_param_combinations:
+            if test_unfreeze_layers_perc:
+                    unfreezed_layers_perc = param_combination['unfreezed_layers_perc']
+            if test_dropout_top_layers:
+                    dropout_top_layers = param_combination['dropout_top_layers']
+            if test_lr:
+                lr = param_combination['learning_rates']
+                #if test_IDG_augmentation_settings_d:
+                #    IDG_augmentation_settings_d = random_param_combinations[3]
 
 """
 def testing_multiple():
@@ -210,71 +275,3 @@ def quick_test():
 
 print("Best result:", lr)
 """
-
-"""
-def generate_random_param():
-    #optimization_methods = ['adagrad', 'rmsprop', 'adadelta', 'adam', 'adamax', 'nadam']      # possible optimization methods
-    #activation_functions = ['sigmoid', 'relu', 'tanh']          # possible activation functions
-    #batch_sizes = [16, 32, 64, 128, 256, 512]                   # possible batch sizes
-    #range_hidden_units = range(5, 250)                          # range of possible hidden units
-    model_info_test_param = {}                                             # create hash table
-    #same_units = np.random.choice([0, 1], p=[1/5, 4/5])         # dictates whether all hidden layers will have the same number of units
-    #same_act_fun = np.random.choice([0, 1], p=[1/10, 9/10])     # will each hidden layer have the same activation function?
-    #really_deep = np.random.rand()
-    #range_layers = range(1, 10) if really_deep < 0.8 else range(6, 20)          # 80% of time constrain number of hidden layers between 1 - 10, 20% of time permit really deep architectures
-    #num_layers = np.random.choice(range_layers, p=[.1, .2, .2, .2, .05, .05, .05, .1, .05]) if really_deep < 0.8 else np.random.choice(range_layers)    # choose number of layers
-    #model_info["Activations"] = [np.random.choice(activation_functions, p = [0.25, 0.5, 0.25])] * num_layers if same_act_fun else [np.random.choice(activation_functions, p = [0.25, 0.5, 0.25]) for _ in range(num_layers)] # choose activation functions
-    #model_info["Hidden layers"] = [np.random.choice(range_hidden_units)] * num_layers if same_units else [np.random.choice(range_hidden_units) for _ in range(num_layers)]  # create hidden layers
-    #model_info["Optimization"] = np.random.choice(optimization_methods)         # choose an optimization method at random
-    #model_info["Batch size"] = np.random.choice(batch_sizes)                    # choose batch size
-    model_info_test_param["Learning Rate"] = 10 ** (-4 * np.random.rand())                 # choose a learning rate on a logarithmic scale
-    #model_info["Training threshold"] = 0.5
-    # set threshold for training
-    model_info_test_param["Dropout_Test"] = np.random.randint(0, 101)
-    return model_info_test_param
-
-
-if param_testing:
-    if __name__ == '__main__':
-        ...
-else:
-    if __name__ == '__main__':
-        ....
-
-
-
-learning_rates = [0.001, 0.01, 0.1, 1e-4]
-unfreeze_layers_perc_test = random.randrange(80, 100)
-dropout_top_layers_test = random.randrange(20, 50, 10)
-lr_test = np.random.choice(learning_rates)
-IDG_augmentation_settings_d_test = {'subset1': {
-    # 'brightness_range': [0.9, 1.1], #Tuple or list of two floats. Range for picking a brightness shift value from.
-    'shear_range': 0.2,  # Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
-    'zoom_range': round(random.uniform(0.8, 1.2), 1),
-    # 'channel_shift_range': 0.3,
-    'horizontal_flip': random.choice([True, False]),
-    'vertical_flip': random.choice([True, False]),
-    # 'rotation_range': 20, #Int. Degree range for random rotations.
-    # 'width_shift_range': 0.2,
-    # 'height_shift_range': 0.2
-}}
-"""
-model_test_param = {"learning_rates": [0.001, 0.01, 0.1, 1e-4],
-                    "dropout_top_layers": [20, 30, 40, 50],
-                    "unfreezed_layers_perc": [20, 30, 40, 50],
-                    "IDG_augmentation_settings_d": {'subset1': {
-                        #'brightness_range': [0.9, 1.1], #Tuple or list of two floats. Range for picking a brightness shift value from.
-                        'shear_range': 0.2, #Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
-                        'zoom_range': 0.8,
-                        #'channel_shift_range': 0.3,
-                        'horizontal_flip': True,
-                        'vertical_flip': True,
-                        #'rotation_range': 20, #Int. Degree range for random rotations.
-                        #'width_shift_range': 0.2,
-                        #'height_shift_range': 0.2
-                     }}
-                    }
-
-keys, values = zip(*model_test_param.items())
-list_all_param_combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
-

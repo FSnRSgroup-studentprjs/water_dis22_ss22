@@ -424,10 +424,10 @@ def main():
                 history = model_fit()
                 model.trainable = True
 
-                model_fit()
+                history = model_fit()
 
             else:
-                history = model_fit
+                history = model_fit()
 
             print(history.history.keys())
 
@@ -533,9 +533,5 @@ def main():
                     print(k, v)
                 writer.writerow(report_d)
 
-
-
-
-
 if __name__ == "__main__":
-    main()
+        main()

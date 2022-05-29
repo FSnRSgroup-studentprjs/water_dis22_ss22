@@ -532,7 +532,12 @@ def main_test():
                     print(k, v)
                 writer.writerow(report_d)
 
-
-if __name__ == "__main__":
-    for test_set in cfg.list_all_param_combinations:
-        main_test()
+for test_set in cfg.list_all_param_combinations:
+    print(test_set)
+    cfg.lr = test_set['learning_rates']
+    cfg.dropout = test_set['dropout_top_layers']
+    cfg.unfreezed_layers_perc = test_set['unfreezed_layers_perc']
+    cfg.IDG_augmentation_settings_d = test_set['IDG_augmentation_settings_d']
+    print(cfg.lr)
+    if __name__ == "__main__":
+            main_test()

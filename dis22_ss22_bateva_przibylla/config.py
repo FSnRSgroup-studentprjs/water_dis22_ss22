@@ -95,9 +95,11 @@ dropout_top_layers = 0
 # Make weights trainable. Unfreezes layers beginning at top layers. Use 0 to 100 (percent)
 ### Dictionary containing values
 unfreeze_dict = {"unfreeze_layers_perc": 86, # Use custom top layers (necessary when using transferlearning)
-          "unfreeze_at": 17}
+          "unfreeze_at": 17,
+          "unfreeze_epochs": int(epochs/2)}
+
 unfreeze_type = list(unfreeze_dict)[0]
-unfreeze_epochs = int(epochs/2)
+
 ### Use custom top layers (necessary when using transferlearning)
 # 2 layers right now. Their neurons can be adjusted
 add_custom_top_layers = True
@@ -181,7 +183,7 @@ tensorboard = True
 #                                                   Testsettings
 ########################################################################################################################
 testing = True
-mode = random #all
+mode = 'all' #'random'
 
 test_lr = True
 test_unfreeze_layers_perc = True
@@ -195,20 +197,21 @@ test_epochs = 25
 def generate_all_param_combinations():
     model_test_param = {"learning_rates": [0.001, 0.01, 0.1, 1e-4],
                         "dropout_top_layers": [0.2, 0.3, 0.4, 0.5],
-                        "unfreezed_layers_perc": [80, 85, 90, 95, 100]}
+                        "unfreezed_layers_perc": [5,10,15,20,25]}
 
     keys, values = zip(*model_test_param.items())
     param_combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
-    IDG_augmentation_settings_d_params = {
-        'brightness_range': [[0.9, 1.1]],
+    IDG_augmentation_settings_d_params = {'subset1': {
+        #'brightness_range': [[0.9, 1.1], [0.3, 1.7]],
         'shear_range': [0.2],  # Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
-        'zoom_range': [0.8],
-        'channel_shift_range': [0.3],
+        'zoom_range': round(random.uniform(0.8, 1.2), 1),
+        'channel_shift_range': [0.3, 0.5],
         'horizontal_flip': [True, False],
         'vertical_flip': [True, False],  # Degree range for random rotations.
-        'width_shift_range': [0.2],
-        'height_shift_range': [0.2]}
+        'width_shift_range': [0.2, 0.5],
+        'height_shift_range': [0.2, 0.5]
+        }}
 
     keys, values = zip(*IDG_augmentation_settings_d_params.items())
     param_combinations_aug = [dict(zip(keys, v)) for v in itertools.product(*values)]
@@ -229,20 +232,7 @@ def generate_random_param_combinations():
     lr = param_combination['learning_rates']
     dropout_top_layers = param_combination['dropout_top_layers']
     unfreezed_layers_perc = param_combination['unfreezed_layers_perc']
-
-    IDG_augmentation_settings_d = {'subset1': {
-        #'brightness_range': [0.9, 1.1], #Tuple or list of two floats. Range for picking a brightness shift value from.
-        'shear_range': 0.2, #Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
-        'zoom_range': round(random.uniform(0.8, 1.2), 1),
-        #'channel_shift_range': 0.3,
-        'horizontal_flip': True,
-        'vertical_flip': True,
-        #'rotation_range': 20, #Int. Degree range for random rotations.
-        #'width_shift_range': 0.2,
-        #'height_shift_range': 0.2
-        }}
     return unfreezed_layers_perc, dropout_top_layers, lr, IDG_augmentation_settings_d
-
 
 if testing:
     if mode == random:
@@ -255,23 +245,5 @@ if testing:
             lr = random_param_combinations[2]
         if test_IDG_augmentation_settings_d:
             IDG_augmentation_settings_d = random_param_combinations[3]
-    elif mode == all:
-        for param_combination in list_all_param_combinations:
-            if test_unfreeze_layers_perc:
-                    unfreezed_layers_perc = param_combination['unfreezed_layers_perc']
-            if test_dropout_top_layers:
-                    dropout_top_layers = param_combination['dropout_top_layers']
-            if test_lr:
-                lr = param_combination['learning_rates']
-                #if test_IDG_augmentation_settings_d:
-                #    IDG_augmentation_settings_d = random_param_combinations[3]
-
-"""
-def testing_multiple():
-
-def create_5():
-
-def quick_test():
-
-print("Best result:", lr)
-"""
+else:
+    pass

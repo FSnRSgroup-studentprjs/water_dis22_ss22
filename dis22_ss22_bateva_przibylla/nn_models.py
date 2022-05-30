@@ -38,6 +38,7 @@ def add_classification_top_layer(model, out_classes, neurons_l, unfreeze_dict, u
         for layer in model.layers[0:unfreeze_at]:
             layer.trainable = False
         print('Frozen layers', freeze_layers, 'unfrozen at', unfreeze_at, 'ges_layers', len(model.layers))
+    """
     elif unfreeze_type == 'unfreeze_blocks':
         unfrozen_blocks = unfreeze_dict['unfreeze_blocks']
         for layer in model.layers:
@@ -50,6 +51,7 @@ def add_classification_top_layer(model, out_classes, neurons_l, unfreeze_dict, u
         print('Unfrozen block(s)', unfrozen_blocks, 'ges_layers', len(model.layers))
     # (https://medium.com/@timsennett/unfreezing-the-layers-you-want-to-fine-tune-using-transfer-learning-1bad8cb72e5d)
     # #Add extra layers and always pass the output tensor to next layer
+    """
     x = model.output
     x = GlobalAveragePooling2D()(x)
     #add multiple layers defined in neurons_l

@@ -410,8 +410,8 @@ def main():
                           epochs=cfg.epochs,
                           callbacks=callbacks_l)
 
-            if cfg.unfreeze_epochs:
-                cfg.epochs = cfg.unfreeze_epochs
+            if cfg.unfreeze_type == "unfreeze_epochs":
+                cfg.epochs = cfg.unfreeze_dict['unfreeze_epochs']
 
                 for layer in model.layers:
                     layer_name = str(layer.name)
@@ -423,13 +423,10 @@ def main():
 
                 history = model_fit()
                 model.trainable = True
-
                 history = model_fit()
 
             else:
                 history = model_fit()
-
-            print(history.history.keys())
 
             fit_time = time.time() - t_begin
             if cfg.verbose:
@@ -533,5 +530,19 @@ def main():
                     print(k, v)
                 writer.writerow(report_d)
 
-if __name__ == "__main__":
-        main()
+if cfg.mode == 'all':
+    list_all_param_combinations = cfg.generate_all_param_combinations()
+    for param_combination in list_all_param_combinations:
+        if cfg.test_unfreeze_layers_perc:
+            cfg.unfreezed_layers_perc = param_combination['unfreezed_layers_perc']
+        if cfg.test_dropout_top_layers:
+            cfg.dropout_top_layers = param_combination['dropout_top_layers']
+        if cfg.test_lr:
+            cfg.lr = param_combination['learning_rates']
+            # if test_IDG_augmentation_settings_d:
+            #    IDG_augmentation_settings_d = random_param_combinations[3]
+        if __name__ == "__main__":
+            main()
+else:
+    if __name__ == "__main__":
+            main()

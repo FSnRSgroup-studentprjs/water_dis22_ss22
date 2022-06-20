@@ -526,6 +526,7 @@ if cfg.testing == True:
                 # access the augmentation settings within the test-combinations dict and set them as augmentation
                 # settings in main for testing purposes
                 cfg.IDG_augmentation_settings_d = {key: value for key, value in param_combination.items() if key == "subset1" or key =="subset2"}
+            print("Model is running with following parameters:", param_combination)
             if __name__ == "__main__":
                     main()
 else:

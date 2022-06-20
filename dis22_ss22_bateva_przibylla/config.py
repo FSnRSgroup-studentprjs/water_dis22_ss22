@@ -58,7 +58,7 @@ channel_size = len(channels)
 #                                  Basic neural network parameters
 ########################################################################################################################
 ### Maximum amount of epochs
-epochs = 1
+epochs = 20
 ### Learning rate (to start with - might get dynamically lowered with callback options)
 lr = 0.001 #1e-4
 # Learning rate decay (used to get rid of the noise)
@@ -204,9 +204,9 @@ test_epochs = 25
 # Define a function that generates all possible hyperparameter combinations from dictionaries of hyperparameters. The
 # hyperparameter values that need to be tested are stored in lists representing the values of the dictionaries.
 def generate_all_param_combinations():
-    model_test_param = {"learning_rates": [0.3, 0.01, 0.1, 1e-4],
+    model_test_param = {"learning_rates": [0.001, 0.01, 0.1, 1e-4],
                         "dropout_top_layers": [0.2, 0.3, 0.4, 0.5],
-                        "unfreezed_layers_perc": [5, 10 , 15, 60, 25]}
+                        "unfreezed_layers_perc": [20, 40, 60, 80]}
 
     # Create list of dictionares with all possible hyperparameter combinations from model_test_param
     keys, values = zip(*model_test_param.items())
@@ -215,18 +215,18 @@ def generate_all_param_combinations():
     # Generate a dictionary of the augmentation settings that have to be tested
     IDG_augmentation_settings_d_params = {'subset1': {
         # 'brightness_range': [0.9, 1.1],
-        'shear_range': 0.3,  # Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
-        'zoom_range': 0.8,
+        'shear_range': 0.2,  # Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
+        'zoom_range': [0.8, 1.2],
         'channel_shift_range': 0.3,
         'horizontal_flip': True,
-        'vertical_flip': False,  # Degree range for random rotations.
+        'vertical_flip': True,  # Degree range for random rotations.
         'width_shift_range': 0.2,
-        'height_shift_range': 0.5
+        'height_shift_range': 0.2
     },
         'subset2': {
             # 'brightness_range': [0.3, 1.7],
             'shear_range': 0.5,  # Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
-            'zoom_range': 0.5,
+            'zoom_range': [0.5, 1.1],
             'channel_shift_range': 0.7,
             'horizontal_flip': True,
             'vertical_flip': False,  # Degree range for random rotations.

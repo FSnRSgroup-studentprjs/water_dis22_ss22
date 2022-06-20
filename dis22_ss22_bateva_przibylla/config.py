@@ -8,7 +8,7 @@ import itertools
 # list of gpus to use
 # (only use 1 GPU!) Otherwise I will kill your process!
 # We all need to calculate on this machine - might get lowered to one, if there are bottlenecks!
-gpus = [1]
+gpus = [0,1]
 
 ########################################################################################################################
 #                                           Verbosity settings
@@ -30,7 +30,7 @@ base_folder = '/mnt/datadisk/data/'
 prj_folder = '/mnt/datadisk/data/Projects/water_dis22_ss22/'
 # train history will be saved in a subfolder of the project path (base_folder + /projects/water/)
 # assign a name according to your group, to separate your results from all others! Create this folder manually!
-trainHistory_subname = 'trainHistory_bateva_przibylla'
+trainHistory_subname = 'trainHistory_bateva_przibylla2'
 
 ########################################################################################################################
 #                                            Run Name
@@ -53,12 +53,11 @@ clipping_values = [0, 3000]
 channels = [4, 3, 2]
 channel_size = len(channels)
 
-
 ########################################################################################################################
 #                                  Basic neural network parameters
 ########################################################################################################################
 ### Maximum amount of epochs
-epochs = 1
+epochs = 5
 ### Learning rate (to start with - might get dynamically lowered with callback options)
 lr = 0.001 #1e-4
 # Learning rate decay (used to get rid of the noise)
@@ -94,11 +93,14 @@ cnn_settings_d = {'include_top': False, 'weights': 'imagenet', 'input_tensor': N
 dropout_top_layers = 0
 # Make weights trainable. Unfreezes layers beginning at top layers. Use 0 to 100 (percent)
 ### Dictionary containing values
-unfreeze_dict = {"unfreeze_layers_perc": 86, # Use custom top layers (necessary when using transferlearning)
-          "unfreeze_at": 17,
-          "unfreeze_epochs": int(epochs/2)}
 
-unfreeze_type = list(unfreeze_dict)[0]
+
+unfreeze_dict = {"unfreeze_type": "unfreeze_blocks",
+          "unfreeze_layers_perc": 86, # Use custom top layers (necessary when using transferlearning)
+          "unfreeze_at": 17,
+          "unfreeze_blocks": ['input', 'block1']}
+
+ #list(unfreeze_dict)[2]
 
 ### Use custom top layers (necessary when using transferlearning)
 # 2 layers right now. Their neurons can be adjusted
@@ -114,7 +116,6 @@ neurons_l = [1024, 512]
 auto_adjust_lr = (False, 4, 0.9)
 # model stops (first value True) when loss doesnt decrease over epochs (2nd value)
 early_stopping = (True, 30)
-
 
 ########################################################################################################################
 #                       ImageDataGenerator (IDG - Keras) Settings
@@ -158,14 +159,12 @@ IDG_augmentation_settings_d = {'subset1': {
         'height_shift_range': 0.2
         }}
 
-
 ########################################################################################################################
 #                               Continuing from earlier runs
 ########################################################################################################################
 ### False or modelcheckp(oint) folder from which to load weights
 load_model_weights = False
 #os.path.join(base_folder, "Projects/water/trainHistory_augmentation/0206/68acc_vgg19img_net_momentum0.9_optimizerSGD_brightness_0.9_1.1shear_0.2channel_shift_0.3horizontal_flip_vertical_flip__1/modelcheckp/")
-
 
 ########################################################################################################################
 #                               Evaluation Settings & Images
@@ -182,7 +181,7 @@ tensorboard = True
 ########################################################################################################################
 #                                                   Testsettings
 ########################################################################################################################
-testing = True
+testing = False
 mode = 'all' #'random'
 
 test_lr = True

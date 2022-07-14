@@ -30,7 +30,7 @@ base_folder = '/mnt/datadisk/data/'
 prj_folder = '/mnt/datadisk/data/Projects/water_dis22_ss22/'
 # train history will be saved in a subfolder of the project path (base_folder + /projects/water/)
 # assign a name according to your group, to separate your results from all others! Create this folder manually!
-trainHistory_subname = 'trainHistory_bateva_przibylla'
+trainHistory_subname = 'trainHistory_bateva_przibylla_test'
 
 ########################################################################################################################
 #                                            Run Name
@@ -58,7 +58,7 @@ channel_size = len(channels)
 #                                  Basic neural network parameters
 ########################################################################################################################
 ### Maximum amount of epochs
-epochs = 1
+epochs = 20
 ### Learning rate (to start with - might get dynamically lowered with callback options)
 lr = 0.001 #1e-4
 # Learning rate decay (used to get rid of the noise)
@@ -182,9 +182,16 @@ tensorboard = True
 ########################################################################################################################
 #                                                   Testsettings
 ########################################################################################################################
+# Activate / Deactivate the test mode. Could be True or False
 testing = True
+
+# Set the test mode. In case of 'all' combinations of all hyperparameter specified in the dictionary below (model_test_param)
+# will be generated. If testing = True the model will be trained with all these combinations. The 'random' mode
+# picks a random set of hyperparameters from the generated combinations. If the testing mode is activaed the model
+# will be trained with these hyperparameters
 mode = 'all' #'random'
 
+# Specify single hyperparameters to be in testing mode
 test_lr = True
 test_unfreeze_layers_perc = True
 test_dropout_top_layers = True
@@ -194,37 +201,61 @@ test_epochs = 25
 ########################################################################################################################
 #                                                   Testcode
 ########################################################################################################################
+# Define a function that generates all possible hyperparameter combinations from dictionaries of hyperparameters. The
+# hyperparameter values that need to be tested are stored in lists representing the values of the dictionaries.
 def generate_all_param_combinations():
     model_test_param = {"learning_rates": [0.001, 0.01, 0.1, 1e-4],
                         "dropout_top_layers": [0.2, 0.3, 0.4, 0.5],
-                        "unfreezed_layers_perc": [5,10,15,20,25]}
+                        "unfreezed_layers_perc": [20, 40, 60, 80]}
 
+    # Create list of dictionares with all possible hyperparameter combinations from model_test_param
     keys, values = zip(*model_test_param.items())
     param_combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
+    # Generate a dictionary of the augmentation settings that have to be tested
     IDG_augmentation_settings_d_params = {'subset1': {
-        #'brightness_range': [[0.9, 1.1], [0.3, 1.7]],
-        'shear_range': [0.2],  # Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
-        'zoom_range': round(random.uniform(0.8, 1.2), 1),
-        'channel_shift_range': [0.3, 0.5],
-        'horizontal_flip': [True, False],
-        'vertical_flip': [True, False],  # Degree range for random rotations.
-        'width_shift_range': [0.2, 0.5],
-        'height_shift_range': [0.2, 0.5]
+        # 'brightness_range': [0.9, 1.1],
+        'shear_range': 0.2,  # Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
+        'zoom_range': [0.8, 1.2],
+        'channel_shift_range': 0.3,
+        'horizontal_flip': True,
+        'vertical_flip': True,  # Degree range for random rotations.
+        'width_shift_range': 0.2,
+        'height_shift_range': 0.2
+    },
+        'subset2': {
+            # 'brightness_range': [0.3, 1.7],
+            'shear_range': 0.5,  # Float. Shear Intensity (Shear angle in counter-clockwise direction in degrees)
+            'zoom_range': [0.5, 1.1],
+            'channel_shift_range': 0.7,
+            'horizontal_flip': True,
+            'vertical_flip': False,  # Degree range for random rotations.
+            'width_shift_range': 0.6,
+            'height_shift_range': 0.2
         }}
 
-    keys, values = zip(*IDG_augmentation_settings_d_params.items())
-    param_combinations_aug = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    # create list of dictionaries with all possible hyperparameter and augmentation setting combinations
+    # values are passed as lists to the dictionaries containing hyperparameter and augmentation settings respectively
 
+    # create an empty list in which the generated pyrameter combinations will be stored
     list_all_param_combinations = []
-    for param_combination in param_combinations:
-        for param_combination_aug in param_combinations_aug:
-            param_combination['IDG_augmentation_settings_d'] = param_combination_aug
-            param_combination = param_combination
-            list_all_param_combinations.append(param_combination)
+    for combination in param_combinations:
+        for subset, settings in IDG_augmentation_settings_d_params.items():
+            augm_dict = {}  # create an empty list with the augmentation setting, which will be attached to the big combi_dict
+            augm_dict[subset] = settings # fill the combined augm_dict and pass "subset" as key
+            combined_dic = {**combination, **augm_dict}
+            list_all_param_combinations.append(combined_dic) #append the combined dictionaries to the list of all parameters
 
     return list_all_param_combinations
 
+
+# Source: https://towardsdatascience.com/how-to-rapidly-test-dozens-of-deep-learning-models-in-python-cb839b518531
+# How to rapidly test dozens of deep learning models in Python
+
+# Pick a random combination from the parameter combinations generated from the previous function. If the test mode is
+# set to random the model would be trained with that hyperparameter set
+
+'''
 def generate_random_param_combinations():
     list_all_param_combinations = generate_all_param_combinations()
     random_candidate = random.randrange(0, len(list_all_param_combinations))
@@ -234,8 +265,10 @@ def generate_random_param_combinations():
     unfreezed_layers_perc = param_combination['unfreezed_layers_perc']
     return unfreezed_layers_perc, dropout_top_layers, lr, IDG_augmentation_settings_d
 
+'''
+'''
 if testing:
-    if mode == random:
+    if mode == "random":
         random_param_combinations = generate_random_param_combinations()
         if test_unfreeze_layers_perc:
             unfreeze_layers_perc = random_param_combinations[0]
@@ -247,3 +280,4 @@ if testing:
             IDG_augmentation_settings_d = random_param_combinations[3]
 else:
     pass
+'''

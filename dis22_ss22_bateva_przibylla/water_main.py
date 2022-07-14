@@ -16,8 +16,8 @@ import pickle
 import time
 import csv
 from functools import partial
-#from tensorflow.python.framework.ops import disable_eager_execution
-#disable_eager_execution()
+# from tensorflow.python.framework.ops import disable_eager_execution
+# disable_eager_execution()
 # warnings.filterwarnings("ignore")
 # tf.autograph.set_verbosity(1)
 import sys
@@ -30,11 +30,11 @@ import nn_models as nnm
 import helper_utils as hu
 
 ###Some general information and settings
-#print some general information
+# print some general information
 print('keras v', keras.__version__)
 print('tf keras v', tensorflow.keras.__version__)
 print('tf v', tf.__version__)
-#to do: try non eager execution graph?
+# to do: try non eager execution graph?
 print('tf eager execution', tf.executing_eagerly())
 
 # do not assign complete gpu-memory but grow it as needed
@@ -60,10 +60,10 @@ def create_run_folders(augmentation_d, normalization_d, prj_path, trainHistory_s
     """Creates a name for the model run by importing settings from config.py.
     This will also be used as the folder name where all files of this run are saved.
     Creates this folder and further subfolders.
-    
+
     Note that config.py also gets replicated into the run_path for easy replication and exact configuration.
     Also imports some parameters directly from config.py
-    
+
     Args:
         augmentation_d (dict): Augmentation parameters (as defined in config.py)
         normalization_d (dict): Normalization parameters (as defined in config.py)
@@ -88,18 +88,19 @@ def create_run_folders(augmentation_d, normalization_d, prj_path, trainHistory_s
             aug_name += k + '_'
         else:
             aug_name += k + str(v)
-    #replace some special chars and omit some strings for better readability and acceptable length
+    # replace some special chars and omit some strings for better readability and acceptable length
     aug_name = aug_name.replace(',', '_')
     aug_name = aug_name.replace('range', '')
     aug_name = aug_name.replace('_center_featurewise_std_normalization_', '')
     aug_name = aug_name.replace('_center_samplewise_std_normalization_', '')
     # strip every char containing harmful chars for paths
     aug_name = aug_name.translate({ord(c): None for c in '[],;!@#$ '})
-    
-    #create base name
+
+    # create base name
     run_name = cfg.model_name + cfg.run_name_custom_string + '_w' + \
-                           str(cfg.cnn_settings_d['weights']) + '_unfl' + \
-                           '_d' + str(cfg.dropout_top_layers) + '_lr' + str(cfg.lr)
+               str(cfg.cnn_settings_d['weights']) + '_unfl' +  \
+               '_d' + str(cfg.dropout_top_layers) + '_lr' + str(cfg.lr)
+    ##str(cfg.unfreeze_layers_perc) +
     if cfg.auto_adjust_lr[0]:
         run_name += '_adjustlr'
     if cfg.momentum:
@@ -129,7 +130,7 @@ def optimizer_loading():
     if cfg.optimizer == "SGD":
         # from transferLearning.py
         optimizer = tf.keras.optimizers.SGD(learning_rate=cfg.lr, momentum=cfg.momentum, nesterov=False,
-                                            name="SGD") #decay=cfg.lr
+                                            name="SGD")
     elif cfg.optimizer == "Adam":
         # from transferLearning.py
         optimizer = optimizers.Adam(lr=cfg.lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
@@ -213,15 +214,10 @@ def model_loader():
         raise NotImplementedError("The model you want is not implemented right now", cfg.model_name)
 
     # Add custom Top Layers (Imagenet has 1000nds of classes - we need 3!)
-    # 'include_top' false -> do not take top layers
-
     if cfg.cnn_settings_d['include_top'] is False and cfg.add_custom_top_layers:
-        base_model = nnm.add_classification_top_layer(base_model, cfg.cnn_settings_d['classes'], cfg.neurons_l, cfg.unfreeze_dict, cfg.unfreeze_type,
-                                                      cfg.dropout_top_layers)
-    print('Final Model with added top layers', len(base_model.layers),
-              'with the setting',  cfg.unfreeze_type)
-    print("Number of layers in the base model: ", len(base_model.layers))
-
+        base_model = nnm.add_classification_top_layer(base_model, cfg.cnn_settings_d['classes'], cfg.neurons_l,
+                                                      cfg.unfreeze_dict, cfg.dropout_top_layers)
+        print('Final Model with added top layers', type(base_model), 'layers', len(base_model.layers))
     return base_model
 
 
@@ -321,16 +317,16 @@ def main():
     # Import paths I
     prj_path = cfg.prj_folder
     paths_dict = {
-                  'sentinel_path': ['base_path', 'Sentinel2/', False],
-                  'sentinel_img_path': ['sentinel_path', 'preprocessed/water/urban/', False],
-                  'train_path': ['sentinel_img_path', 'train/', False],
-                  'val_path': ['sentinel_img_path', 'validation/', False],
-                  'test_path': ['sentinel_img_path', 'test/', False]}
+        'sentinel_path': ['base_path', 'Sentinel2/', False],
+        'sentinel_img_path': ['sentinel_path', 'preprocessed/water/urban/', False],
+        'train_path': ['sentinel_img_path', 'train/', False],
+        'val_path': ['sentinel_img_path', 'validation/', False],
+        'test_path': ['sentinel_img_path', 'test/', False]}
     # create paths
     [sentinel_path, sentinel_img_path, train_path, val_path, test_path] = \
         hu.paths_from_base_path(cfg.base_folder, paths_dict)
 
-    #load labels and class_weights from file (or calculate later one)
+    # load labels and class_weights from file (or calculate later one)
     labels_df = pd.read_csv(os.path.join(prj_path, 'labels_df_shannon.csv'))
     if cfg.verbose:
         print('labels')
@@ -338,7 +334,7 @@ def main():
     class_weights = hu.load_class_weights(os.path.join(prj_path, 'class_weights'), labels_df, train_path, prj_path,
                                           True, verbose=1)
 
-    #iterating over multiple normalization and augmentation Settings of IDG (Test routine)
+    # iterating over multiple normalization and augmentation Settings of IDG (Test routine)
     for normalization_key, normalization_d in cfg.IDG_normalization_d.items():
         t_begin = time.time()
         with strategy.scope():
@@ -356,7 +352,7 @@ def main():
                 print('normalization_d', normalization_d)
                 print('aug_key, augmentation_d', aug_key, augmentation_d)
 
-            #create new folders for run files
+            # create new folders for run files
             train_history_path, run_path, modelcheckpoint_path, augmented_images_path, run_name = \
                 create_run_folders(augmentation_d, normalization_d, prj_path, cfg.trainHistory_subname)
 
@@ -366,6 +362,9 @@ def main():
             ###Define Parameters for run
             optimizer = optimizer_loading()
             callbacks_l = callback_loader(run_path, modelcheckpoint_path)
+            
+
+            if fine_tuning:
 
             #strategy scope from tf.distribute.MirroredStrategy(gpus) (cf. top of file) in TF2 is used for mutlti-gpu
             # usage
@@ -384,9 +383,73 @@ def main():
                     print('Final Model', type(model))
                     print(model.summary())
 
+
             if cfg.generator == 'ImageDataGenerator':
-                datagen_train, datagen_val, datagen_test = IDG_creator(train_x, train_y, val_x, val_y, test_x, test_y,
+                datagen_train, datagen_val, datagen_test = IDG_creator(train_x, train_y, val_x, val_y, test_x,
+                                                                       test_y,
                                                                        augmentation_d, normalization_d)
+
+            """
+            Fine-Tuning:
+            Concatenate different model runs. Choose the Number of networks and set the parameter settings. The Following 
+            code allows you to continue with the previous weights.
+            """
+            num_networks = 2
+            epochs_freezing = 20
+            epochs_unfreezing = 100
+            limit = 1
+            # create empty lists to append values from each iterationn
+            acc = []
+            val_acc = []
+            loss = []
+            val_loss = []
+
+            for i in range(num_networks):
+                if i == 0:
+                    with strategy.scope():
+                        # Everything that creates variables should be under the strategy scope.
+                        # In general this is only model construction & `compile()`.
+                        # Load Model
+                        model = model_loader()
+                        # Create Metrics
+                        metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
+                        model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
+                        # Load weights
+                if i == 1:
+                    i = i - 1
+                    ### load weights from previous iteration
+                    ##model.load_weights(os.path.join(run_path, f'Weights_{i}.h5'))
+                    model.trainable = True #set trainable true for the second iteration
+                    cfg.epochs = epochs_unfreezing
+                else:
+                    cfg.epochs = epochs_freezing
+                if cfg.verbose:
+                    print('Final Model', type(model))
+                    print(model.summary(show_trainable = True))
+                    # check the model settings for trainable
+
+                ###Run Model
+                t_begin = time.time()
+
+                history = model.fit(
+                    datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
+                    class_weight=class_weights,
+                    validation_data=datagen_val.flow(val_x, val_y,
+                                                     batch_size=cfg.batch_size, shuffle=True),
+                    # datagen.flow_from_dataframe(val_ds),
+                    epochs=cfg.epochs,
+                    callbacks=callbacks_l)
+
+                # extend the list with all new model metrics
+                acc.extend(history.history['categorical_accuracy'])
+                val_acc.extend(history.history['val_categorical_accuracy'])
+                loss.extend(history.history['loss'])
+                val_loss.extend(history.history['val_loss'])
+
+                ###safe the weights of each iteration
+                ##model.save_weights(os.path.join(run_path, f'Weights_{i}.h5'))
+                fit_time = time.time() - t_begin
+
 
             ###Run Model
             t_begin = time.time()
@@ -410,14 +473,19 @@ def main():
                                 callbacks=callbacks_l)
             fit_time = time.time() - t_begin
             if cfg.verbose:
+
                 print('Time to fit model (s)', fit_time)
+
+            history.history['categorical_accuracy'] = acc
+            history.history['val_categorical_accuracy'] = val_acc
+            history.history['loss'] = loss
+            history.history['val_loss'] = val_loss
 
             # Save history as pickle
             with open(os.path.join(run_path, 'trainHistory'), 'wb') as file_pi:
                 pickle.dump(history.history, file_pi)
             # Save model
             model.save(os.path.join(run_path, 'Model'))
-
 
             ###Visualize results
             # show and/or save augmented images
@@ -435,7 +503,7 @@ def main():
 
             if cfg.verbose:
                 print(history.history.keys())
-            #summarize statistics
+            # summarize statistics
             additional_reports_d = {'max epoch': len(history.history['val_loss']),
                                     'max val acc': max(history.history['val_categorical_accuracy']),
                                     'max val acc epoch':
@@ -443,7 +511,7 @@ def main():
                                             history.history['val_categorical_accuracy'])),
                                     'val acc at break': history.history['val_categorical_accuracy'][-1],
                                     'fit time': fit_time, 'Time per epoch': fit_time / len(history.history['val_loss'])}
-            #visualize history
+            # visualize history
             visualizations.plot_history(history, run_path)
 
             ### Evaluation
@@ -510,6 +578,170 @@ def main():
                     print(k, v)
                 writer.writerow(report_d)
 
+
+
+if cfg.testing == False:
+    if __name__ == "__main__":
+        main()
+
+        """
+        For the scope you want to run some tests based on an amount of 
+        testing parameters choose either the all mode, to test all possible 
+        combinations or choose the random mode to inititialize an mode 
+        and then keep forward with intellectual decisions.
+        """
+"""
+else:
+    if cfg.mode == 'all':
+        list_all_param_combinations = cfg.generate_all_param_combinations()
+        for param_combination in list_all_param_combinations:
+            if cfg.test_unfreeze_layers_perc: #take the unfreeze layers percantage param
+                cfg.unfreezed_layers_perc = param_combination['unfreezed_layers_perc']
+            if cfg.test_dropout_top_layers: #take the dropout top layers param
+                cfg.dropout_top_layers = param_combination['dropout_top_layers']
+            if cfg.test_lr: #takes the learning rate param
+                cfg.lr = param_combination['learning_rates']
+            if __name__ == "__main__":
+                main()
+"""
+"""
+            #strategy scope from tf.distribute.MirroredStrategy(gpus) (cf. top of file) in TF2 is used for mutlti-gpu
+            # usage
+            with strategy.scope():
+                # Everything that creates variables should be under the strategy scope.
+                # In general this is only model construction & `compile()`.
+                # Load Model
+                #cfg.unfreeze_layers_perc = 50
+                model = model_loader()
+                # Create Metrics
+                metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
+                model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
+                # Load weights
+                if cfg.load_model_weights:
+                    model.load_weights(cfg.load_model_weights)
+                if cfg.verbose:
+                    print('Final Model', type(model), model.name)
+                    print(model.summary(show_trainable = True))
+
+            if cfg.generator == 'ImageDataGenerator':
+                datagen_train, datagen_val, datagen_test = IDG_creator(train_x, train_y, val_x, val_y, test_x, test_y,
+                                                                       augmentation_d, normalization_d)
+
+            ###Run Model
+            t_begin = time.time()
+            # to do: turn of cryptic warning (no influences though?) - not working w IDG - needs to be fixed!
+            # cf. https://stackoverflow.com/questions/65322700/tensorflow-keras-consider-either-turning-off-auto-sharding-or-switching-the-a
+            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.OFF
+            # use option autoencoder on ds
+            # options = tf.data.Options()
+            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+            # train_ds = train_ds.with_options(options)
+            # val_ds = val_ds.with_options(options)
+            # test_ds = test_ds.with_options(options)
+
+            history = model.fit(
+                                datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
+                                class_weight=class_weights,
+                                validation_data=datagen_val.flow(val_x, val_y,
+                                                                 batch_size=cfg.batch_size, shuffle=True),
+                                #datagen.flow_from_dataframe(val_ds),
+                                epochs=int(cfg.epochs/2),
+                                callbacks=callbacks_l)
+
+            # Save model
+            path = os.path.join(run_path, 'Model')
+            model.save(path)
+
+            # Create a new model instance
+            with strategy.scope():
+            # Everything that creates variables should be under the strategy scope.
+            # In general this is only model construction & `compile()`.
+            # Load Model
+                cfg.unfreeze_layers_perc = 0
+                model = model_loader()
+                # Create Metrics
+                metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
+                model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
+                # Load weights
+                model.load_weights(path)
+                if cfg.verbose:
+                    print('Final Model', type(model), model.name)
+                    print(model.summary(show_trainable=True))
+
+            history = model.fit(
+                                datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
+                                class_weight=class_weights,
+                                validation_data=datagen_val.flow(val_x, val_y,
+                                                                 batch_size=cfg.batch_size, shuffle=True),
+                                #datagen.flow_from_dataframe(val_ds),
+                                epochs=int(cfg.epochs/2),
+                                callbacks=callbacks_l)
+
+            def Merge(dict1, dict2):
+                return (dict2.update(dict1))
+            
+            history = Merge(history, history_2)
+            
+########################################################################################################################
+#                                           Session
+########################################################################################################################
+
+            session = tf.Session()
+            num_networks = 2
+            Start_Session == True
+
+            for i in range(num_networks):
+                with strategy.scope():
+                    # Everything that creates variables should be under the strategy scope.
+                    # In general this is only model construction & `compile()`.
+                    # Load Model
+                    model = model_loader()
+                    # Create Metrics
+                    metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
+                    model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
+                    # Load weights
+                    if cfg.load_model_weights:
+                        model.load_weights(cfg.load_model_weights)
+                    if cfg.verbose:
+                        print('Final Model', type(model))
+                        print(model.summary())
+                # Save the optimized variables to disk.
+                saver.save(sess=session, save_path=get_save_path(i))
+
+                # Print newline.
+                print()
+
+                if cfg.generator == 'ImageDataGenerator':
+                    datagen_train, datagen_val, datagen_test = IDG_creator(train_x, train_y, val_x, val_y, test_x,
+                                                                               test_y,
+                                                                               augmentation_d, normalization_d)
+
+                ###Run Model
+                t_begin = time.time()
+
+                history = model.fit(
+                    datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
+                    class_weight=class_weights,
+                    validation_data=datagen_val.flow(val_x, val_y,
+                    batch_size=cfg.batch_size, shuffle=True),
+                    # datagen.flow_from_dataframe(val_ds),
+                    epochs=cfg.epochs,
+                    callbacks=callbacks_l)
+
+                fit_time = time.time() - t_begin
+
+                if cfg.verbose:
+                    print('Time to fit model (s)', fit_time)
+
+            # Save history as pickle
+            with open(os.path.join(run_path, 'trainHistory'), 'wb') as file_pi:
+                pickle.dump(history.history, file_pi)
+            # Save model
+            model.save(os.path.join(run_path, 'Model'))
+            
+"""
+
 # Execute the main() with the testing parameters if testing = True. Otherwise the model would be trained with the
 # specified parameter in config
 if cfg.testing == True:
@@ -532,3 +764,4 @@ if cfg.testing == True:
 else:
     if __name__ == "__main__":
             main()
+

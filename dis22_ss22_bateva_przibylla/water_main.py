@@ -367,7 +367,23 @@ def main():
                 datagen_train, datagen_val, datagen_test = IDG_creator(train_x, train_y, val_x, val_y, test_x,
                                                                        test_y,
                                                                        augmentation_d, normalization_d)
+
             """
+            #AdaBoost (?) https://stackoverflow.com/questions/39063676/how-to-boost-a-keras-based-neural-network-using-adaboost
+            def simple_model():                                           
+                # create model
+                model = model_loader()
+                return model
+                
+            ann_estimator = KerasRegressor(build_fn= simple_model, epochs=100, batch_size=10, verbose=0)
+            
+            boosted_ann = AdaBoostRegressor(base_estimator= ann_estimator)
+            boosted_ann.fit(rescaledX, y_train.values.ravel())# scale your training data 
+            boosted_ann.predict(rescaledX_Test)
+            """
+
+            """
+            Fine-Tuning:
             Concatenate different model runs. Choose the Number of networks and set the parameter settings. The Following 
             code allows you to continue with the previous weights.
             """
@@ -394,7 +410,8 @@ def main():
                         # Load weights
                 if i == 1:
                     i = i - 1
-                    #model.load_weights(os.path.join(run_path, f'Weights_{i}.h5'))
+                    ### load weights from previous iteration
+                    ##model.load_weights(os.path.join(run_path, f'Weights_{i}.h5'))
                     model.trainable = True #set trainable true for the second iteration
                     cfg.epochs = epochs_unfreezing
                 else:
@@ -422,8 +439,8 @@ def main():
                 loss.extend(history.history['loss'])
                 val_loss.extend(history.history['val_loss'])
 
-                #safe the weights of each iteration
-                #model.save_weights(os.path.join(run_path, f'Weights_{i}.h5'))
+                ###safe the weights of each iteration
+                ##model.save_weights(os.path.join(run_path, f'Weights_{i}.h5'))
                 fit_time = time.time() - t_begin
 
                 print('Time to fit model (s)', fit_time)

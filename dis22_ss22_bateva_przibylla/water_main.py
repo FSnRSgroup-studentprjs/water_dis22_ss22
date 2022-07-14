@@ -362,25 +362,32 @@ def main():
             ###Define Parameters for run
             optimizer = optimizer_loading()
             callbacks_l = callback_loader(run_path, modelcheckpoint_path)
+            
+
+            if fine_tuning:
+
+            #strategy scope from tf.distribute.MirroredStrategy(gpus) (cf. top of file) in TF2 is used for mutlti-gpu
+            # usage
+            with strategy.scope():
+                # Everything that creates variables should be under the strategy scope.
+                # In general this is only model construction & `compile()`.
+                # Load Model
+                model = model_loader()
+                # Create Metrics
+                metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
+                model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
+                # Load weights
+                if cfg.load_model_weights:
+                    model.load_weights(cfg.load_model_weights)
+                if cfg.verbose:
+                    print('Final Model', type(model))
+                    print(model.summary())
+
 
             if cfg.generator == 'ImageDataGenerator':
                 datagen_train, datagen_val, datagen_test = IDG_creator(train_x, train_y, val_x, val_y, test_x,
                                                                        test_y,
                                                                        augmentation_d, normalization_d)
-
-            """
-            #AdaBoost (?) https://stackoverflow.com/questions/39063676/how-to-boost-a-keras-based-neural-network-using-adaboost
-            def simple_model():                                           
-                # create model
-                model = model_loader()
-                return model
-                
-            ann_estimator = KerasRegressor(build_fn= simple_model, epochs=100, batch_size=10, verbose=0)
-            
-            boosted_ann = AdaBoostRegressor(base_estimator= ann_estimator)
-            boosted_ann.fit(rescaledX, y_train.values.ravel())# scale your training data 
-            boosted_ann.predict(rescaledX_Test)
-            """
 
             """
             Fine-Tuning:
@@ -442,6 +449,30 @@ def main():
                 ###safe the weights of each iteration
                 ##model.save_weights(os.path.join(run_path, f'Weights_{i}.h5'))
                 fit_time = time.time() - t_begin
+
+
+            ###Run Model
+            t_begin = time.time()
+            # to do: turn of cryptic warning (no influences though?) - not working w IDG - needs to be fixed!
+            # cf. https://stackoverflow.com/questions/65322700/tensorflow-keras-consider-either-turning-off-auto-sharding-or-switching-the-a
+            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.OFF
+            # use option autoencoder on ds
+            # options = tf.data.Options()
+            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+            # train_ds = train_ds.with_options(options)
+            # val_ds = val_ds.with_options(options)
+            # test_ds = test_ds.with_options(options)
+            history = model.fit(
+                                datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
+                                class_weight=class_weights,
+                                validation_data=datagen_val.flow(val_x, val_y,
+                                                                 batch_size=cfg.batch_size, shuffle=True),
+                                #datagen.flow_from_dataframe(val_ds),
+                                epochs=cfg.epochs,
+                                callbacks=callbacks_l)
+            fit_time = time.time() - t_begin
+            if cfg.verbose:
 
                 print('Time to fit model (s)', fit_time)
 
@@ -546,6 +577,7 @@ def main():
                 for k, v in report_d.items():
                     print(k, v)
                 writer.writerow(report_d)
+
 
 
 if cfg.testing == False:
@@ -709,4 +741,27 @@ else:
             model.save(os.path.join(run_path, 'Model'))
             
 """
+
+# Execute the main() with the testing parameters if testing = True. Otherwise the model would be trained with the
+# specified parameter in config
+if cfg.testing == True:
+    if cfg.mode == 'all': #choose the test mode
+        list_all_param_combinations = cfg.generate_all_param_combinations()
+        for param_combination in list_all_param_combinations: #access single parameter combination
+            if cfg.test_unfreeze_layers_perc:
+                cfg.unfreeze_dict["unfreeze_layers_perc"] = param_combination['unfreezed_layers_perc']
+            if cfg.test_dropout_top_layers:
+                cfg.dropout_top_layers = param_combination['dropout_top_layers']
+            if cfg.test_lr:
+                cfg.lr = param_combination['learning_rates']
+            if cfg.test_IDG_augmentation_settings_d:
+                # access the augmentation settings within the test-combinations dict and set them as augmentation
+                # settings in main for testing purposes
+                cfg.IDG_augmentation_settings_d = {key: value for key, value in param_combination.items() if key == "subset1" or key =="subset2"}
+            print("Model is running with following parameters:", param_combination)
+            if __name__ == "__main__":
+                    main()
+else:
+    if __name__ == "__main__":
+            main()
 

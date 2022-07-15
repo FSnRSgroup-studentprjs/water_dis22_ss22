@@ -31,7 +31,7 @@ prj_folder = '/mnt/datadisk/data/Projects/water_dis22_ss22/'
 # train history will be saved in a subfolder of the project path (base_folder + /projects/water/)
 # assign a name according to your group, to separate your results from all others! Create this folder manually!
 
-trainHistory_subname = 'trainHistory_bateva_przibylla_test'
+trainHistory_subname = 'trainHistory_bateva_przibylla_3'
 
 ########################################################################################################################
 #                                            Run Name
@@ -99,7 +99,7 @@ dropout_top_layers = 0
 
 
 unfreeze_dict = {"unfreeze_type": "unfreeze_blocks",
-          "unfreeze_layers_perc": 86, # Use custom top layers (necessary when using transferlearning)
+          "unfreeze_layers_perc": 86, # Use custom top layers (necessary when using transferlearning),
           "unfreeze_at": 17,
           "unfreeze_blocks": ['input', 'block1']}
 
@@ -182,13 +182,18 @@ save_augmented_images = 15
 tensorboard = True
 
 ########################################################################################################################
+#                                                   Fine-Tuning
+########################################################################################################################
+# 
+fine_tuning = True # If you set fine-tuning as true you will run 2 iterations of the model
+epochs_freezing = 2 # Number of epochs you want to train with the aforementioned settings
+epochs_unfreezing = 4 # Number of Epochs you want to train unfreezed.
+
+########################################################################################################################
 #                                                   Testsettings
 ########################################################################################################################
-
-testing = False
-=======
 # Activate / Deactivate the test mode. Could be True or False
-testing = True
+testing = False
 
 # Set the test mode. In case of 'all' combinations of all hyperparameter specified in the dictionary below (model_test_param)
 # will be generated. If testing = True the model will be trained with all these combinations. The 'random' mode

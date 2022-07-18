@@ -362,26 +362,6 @@ def main():
             ###Define Parameters for run
             optimizer = optimizer_loading()
             callbacks_l = callback_loader(run_path, modelcheckpoint_path)
-            
-
-            if fine_tuning:
-
-            #strategy scope from tf.distribute.MirroredStrategy(gpus) (cf. top of file) in TF2 is used for mutlti-gpu
-            # usage
-            with strategy.scope():
-                # Everything that creates variables should be under the strategy scope.
-                # In general this is only model construction & `compile()`.
-                # Load Model
-                model = model_loader()
-                # Create Metrics
-                metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
-                model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
-                # Load weights
-                if cfg.load_model_weights:
-                    model.load_weights(cfg.load_model_weights)
-                if cfg.verbose:
-                    print('Final Model', type(model))
-                    print(model.summary())
 
 
             if cfg.generator == 'ImageDataGenerator':
@@ -389,48 +369,119 @@ def main():
                                                                        test_y,
                                                                        augmentation_d, normalization_d)
 
-            """
-            Fine-Tuning:
-            Concatenate different model runs. Choose the Number of networks and set the parameter settings. The Following 
-            code allows you to continue with the previous weights.
-            """
-            num_networks = 2
-            epochs_freezing = 20
-            epochs_unfreezing = 100
-            limit = 1
-            # create empty lists to append values from each iterationn
-            acc = []
-            val_acc = []
-            loss = []
-            val_loss = []
+            if cfg.fine_tuning:
+                """
+                Fine-Tuning:
+                Concatenate different model runs. The Following code allows you to continue with the previous weights.
+                """
 
-            for i in range(num_networks):
-                if i == 0:
-                    with strategy.scope():
-                        # Everything that creates variables should be under the strategy scope.
-                        # In general this is only model construction & `compile()`.
-                        # Load Model
-                        model = model_loader()
-                        # Create Metrics
-                        metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
-                        model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
-                        # Load weights
-                if i == 1:
-                    i = i - 1
-                    ### load weights from previous iteration
-                    ##model.load_weights(os.path.join(run_path, f'Weights_{i}.h5'))
-                    model.trainable = True #set trainable true for the second iteration
-                    cfg.epochs = epochs_unfreezing
-                else:
-                    cfg.epochs = epochs_freezing
-                if cfg.verbose:
-                    print('Final Model', type(model))
-                    print(model.summary(show_trainable = True))
-                    # check the model settings for trainable
+                # create empty lists to append values from each iterationn
+                acc = []
+                val_acc = []
+                loss = []
+                val_loss = []
+
+                for i in (0,1):
+                    if i == 0:
+                        with strategy.scope():
+                            # Everything that creates variables should be under the strategy scope.
+                            # In general this is only model construction & `compile()`.
+                            # Load Model
+                            model = model_loader()
+                            # Create Metrics
+                            metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
+                            model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
+                            cfg.epochs = cfg.epochs_freezing
+                    if i == 1:
+                        i = i - 1
+                        model.trainable = True #set trainable true for the second iteration
+                        cfg.epochs = cfg.epochs_unfreezing
+                    if cfg.verbose:
+                        print('Final Model', type(model))
+                        print(model.summary(show_trainable = True))
+                        # check the model settings for trainable
+
+                    ###Run Model
+                    t_begin = time.time()
+
+                    history = model.fit(
+                        datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
+                        class_weight=class_weights,
+                        validation_data=datagen_val.flow(val_x, val_y,
+                                                         batch_size=cfg.batch_size, shuffle=True),
+                        # datagen.flow_from_dataframe(val_ds),
+                        epochs=cfg.epochs,
+                        callbacks=callbacks_l)
+
+                    # extend the list with all new model metrics
+                    acc.extend(history.history['categorical_accuracy'])
+                    val_acc.extend(history.history['val_categorical_accuracy'])
+                    loss.extend(history.history['loss'])
+                    val_loss.extend(history.history['val_loss'])
+
+                    ###safe the weights of each iteration
+                    ##model.save_weights(os.path.join(run_path, f'Weights_{i}.h5'))
+                    fit_time = time.time() - t_begin
+
 
                 ###Run Model
                 t_begin = time.time()
+                # to do: turn of cryptic warning (no influences though?) - not working w IDG - needs to be fixed!
+                # cf. https://stackoverflow.com/questions/65322700/tensorflow-keras-consider-either-turning-off-auto-sharding-or-switching-the-a
+                # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+                # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.OFF
+                # use option autoencoder on ds
+                # options = tf.data.Options()
+                # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+                # train_ds = train_ds.with_options(options)
+                # val_ds = val_ds.with_options(options)
+                # test_ds = test_ds.with_options(options)
+                history = model.fit(
+                                    datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
+                                    class_weight=class_weights,
+                                    validation_data=datagen_val.flow(val_x, val_y,
+                                                                     batch_size=cfg.batch_size, shuffle=True),
+                                    #datagen.flow_from_dataframe(val_ds),
+                                    epochs=cfg.epochs,
+                                    callbacks=callbacks_l)
+                fit_time = time.time() - t_begin
+                if cfg.verbose:
 
+                    print('Time to fit model (s)', fit_time)
+
+                history.history['categorical_accuracy'] = acc
+                history.history['val_categorical_accuracy'] = val_acc
+                history.history['loss'] = loss
+                history.history['val_loss'] = val_loss
+
+            else:
+                with strategy.scope():
+                    # Everything that creates variables should be under the strategy scope.
+                    # In general this is only model construction & `compile()`.
+                    # Load Model
+                    model = model_loader()
+                    # Create Metrics
+                    metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
+                    model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
+                    # Load weights
+                    if cfg.load_model_weights:
+                        model.load_weights(cfg.load_model_weights)
+                    if cfg.verbose:
+                        print('Final Model', type(model))
+                        print(model.summary())
+
+                ###Run Model
+                t_begin = time.time()
+                # to do: turn of cryptic warning (no influences though?) - not working w IDG - needs to be fixed!
+                # cf. https://stackoverflow.com/questions/65322700/tensorflow-keras-consider-either-turning-off-auto-sharding-or-switching-the-a
+                # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+                # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.OFF
+                # use option autoencoder on ds
+                # options = tf.data.Options()
+                # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
+                # train_ds = train_ds.with_options(options)
+                # val_ds = val_ds.with_options(options)
+                # test_ds = test_ds.with_options(options)
                 history = model.fit(
                     datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
                     class_weight=class_weights,
@@ -439,47 +490,10 @@ def main():
                     # datagen.flow_from_dataframe(val_ds),
                     epochs=cfg.epochs,
                     callbacks=callbacks_l)
-
-                # extend the list with all new model metrics
-                acc.extend(history.history['categorical_accuracy'])
-                val_acc.extend(history.history['val_categorical_accuracy'])
-                loss.extend(history.history['loss'])
-                val_loss.extend(history.history['val_loss'])
-
-                ###safe the weights of each iteration
-                ##model.save_weights(os.path.join(run_path, f'Weights_{i}.h5'))
                 fit_time = time.time() - t_begin
+                if cfg.verbose:
+                    print('Time to fit model (s)', fit_time)
 
-
-            ###Run Model
-            t_begin = time.time()
-            # to do: turn of cryptic warning (no influences though?) - not working w IDG - needs to be fixed!
-            # cf. https://stackoverflow.com/questions/65322700/tensorflow-keras-consider-either-turning-off-auto-sharding-or-switching-the-a
-            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.OFF
-            # use option autoencoder on ds
-            # options = tf.data.Options()
-            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-            # train_ds = train_ds.with_options(options)
-            # val_ds = val_ds.with_options(options)
-            # test_ds = test_ds.with_options(options)
-            history = model.fit(
-                                datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
-                                class_weight=class_weights,
-                                validation_data=datagen_val.flow(val_x, val_y,
-                                                                 batch_size=cfg.batch_size, shuffle=True),
-                                #datagen.flow_from_dataframe(val_ds),
-                                epochs=cfg.epochs,
-                                callbacks=callbacks_l)
-            fit_time = time.time() - t_begin
-            if cfg.verbose:
-
-                print('Time to fit model (s)', fit_time)
-
-            history.history['categorical_accuracy'] = acc
-            history.history['val_categorical_accuracy'] = val_acc
-            history.history['loss'] = loss
-            history.history['val_loss'] = val_loss
 
             # Save history as pickle
             with open(os.path.join(run_path, 'trainHistory'), 'wb') as file_pi:
@@ -578,169 +592,6 @@ def main():
                     print(k, v)
                 writer.writerow(report_d)
 
-
-
-if cfg.testing == False:
-    if __name__ == "__main__":
-        main()
-
-        """
-        For the scope you want to run some tests based on an amount of 
-        testing parameters choose either the all mode, to test all possible 
-        combinations or choose the random mode to inititialize an mode 
-        and then keep forward with intellectual decisions.
-        """
-"""
-else:
-    if cfg.mode == 'all':
-        list_all_param_combinations = cfg.generate_all_param_combinations()
-        for param_combination in list_all_param_combinations:
-            if cfg.test_unfreeze_layers_perc: #take the unfreeze layers percantage param
-                cfg.unfreezed_layers_perc = param_combination['unfreezed_layers_perc']
-            if cfg.test_dropout_top_layers: #take the dropout top layers param
-                cfg.dropout_top_layers = param_combination['dropout_top_layers']
-            if cfg.test_lr: #takes the learning rate param
-                cfg.lr = param_combination['learning_rates']
-            if __name__ == "__main__":
-                main()
-"""
-"""
-            #strategy scope from tf.distribute.MirroredStrategy(gpus) (cf. top of file) in TF2 is used for mutlti-gpu
-            # usage
-            with strategy.scope():
-                # Everything that creates variables should be under the strategy scope.
-                # In general this is only model construction & `compile()`.
-                # Load Model
-                #cfg.unfreeze_layers_perc = 50
-                model = model_loader()
-                # Create Metrics
-                metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
-                model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
-                # Load weights
-                if cfg.load_model_weights:
-                    model.load_weights(cfg.load_model_weights)
-                if cfg.verbose:
-                    print('Final Model', type(model), model.name)
-                    print(model.summary(show_trainable = True))
-
-            if cfg.generator == 'ImageDataGenerator':
-                datagen_train, datagen_val, datagen_test = IDG_creator(train_x, train_y, val_x, val_y, test_x, test_y,
-                                                                       augmentation_d, normalization_d)
-
-            ###Run Model
-            t_begin = time.time()
-            # to do: turn of cryptic warning (no influences though?) - not working w IDG - needs to be fixed!
-            # cf. https://stackoverflow.com/questions/65322700/tensorflow-keras-consider-either-turning-off-auto-sharding-or-switching-the-a
-            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.OFF
-            # use option autoencoder on ds
-            # options = tf.data.Options()
-            # options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.DATA
-            # train_ds = train_ds.with_options(options)
-            # val_ds = val_ds.with_options(options)
-            # test_ds = test_ds.with_options(options)
-
-            history = model.fit(
-                                datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
-                                class_weight=class_weights,
-                                validation_data=datagen_val.flow(val_x, val_y,
-                                                                 batch_size=cfg.batch_size, shuffle=True),
-                                #datagen.flow_from_dataframe(val_ds),
-                                epochs=int(cfg.epochs/2),
-                                callbacks=callbacks_l)
-
-            # Save model
-            path = os.path.join(run_path, 'Model')
-            model.save(path)
-
-            # Create a new model instance
-            with strategy.scope():
-            # Everything that creates variables should be under the strategy scope.
-            # In general this is only model construction & `compile()`.
-            # Load Model
-                cfg.unfreeze_layers_perc = 0
-                model = model_loader()
-                # Create Metrics
-                metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
-                model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
-                # Load weights
-                model.load_weights(path)
-                if cfg.verbose:
-                    print('Final Model', type(model), model.name)
-                    print(model.summary(show_trainable=True))
-
-            history = model.fit(
-                                datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
-                                class_weight=class_weights,
-                                validation_data=datagen_val.flow(val_x, val_y,
-                                                                 batch_size=cfg.batch_size, shuffle=True),
-                                #datagen.flow_from_dataframe(val_ds),
-                                epochs=int(cfg.epochs/2),
-                                callbacks=callbacks_l)
-
-            def Merge(dict1, dict2):
-                return (dict2.update(dict1))
-            
-            history = Merge(history, history_2)
-            
-########################################################################################################################
-#                                           Session
-########################################################################################################################
-
-            session = tf.Session()
-            num_networks = 2
-            Start_Session == True
-
-            for i in range(num_networks):
-                with strategy.scope():
-                    # Everything that creates variables should be under the strategy scope.
-                    # In general this is only model construction & `compile()`.
-                    # Load Model
-                    model = model_loader()
-                    # Create Metrics
-                    metrics_l = [tf.keras.metrics.CategoricalAccuracy()]
-                    model.compile(optimizer=optimizer, loss=cfg.loss, metrics=[metrics_l])
-                    # Load weights
-                    if cfg.load_model_weights:
-                        model.load_weights(cfg.load_model_weights)
-                    if cfg.verbose:
-                        print('Final Model', type(model))
-                        print(model.summary())
-                # Save the optimized variables to disk.
-                saver.save(sess=session, save_path=get_save_path(i))
-
-                # Print newline.
-                print()
-
-                if cfg.generator == 'ImageDataGenerator':
-                    datagen_train, datagen_val, datagen_test = IDG_creator(train_x, train_y, val_x, val_y, test_x,
-                                                                               test_y,
-                                                                               augmentation_d, normalization_d)
-
-                ###Run Model
-                t_begin = time.time()
-
-                history = model.fit(
-                    datagen_train.flow(train_x, train_y, batch_size=cfg.batch_size, shuffle=True),
-                    class_weight=class_weights,
-                    validation_data=datagen_val.flow(val_x, val_y,
-                    batch_size=cfg.batch_size, shuffle=True),
-                    # datagen.flow_from_dataframe(val_ds),
-                    epochs=cfg.epochs,
-                    callbacks=callbacks_l)
-
-                fit_time = time.time() - t_begin
-
-                if cfg.verbose:
-                    print('Time to fit model (s)', fit_time)
-
-            # Save history as pickle
-            with open(os.path.join(run_path, 'trainHistory'), 'wb') as file_pi:
-                pickle.dump(history.history, file_pi)
-            # Save model
-            model.save(os.path.join(run_path, 'Model'))
-            
-"""
 
 # Execute the main() with the testing parameters if testing = True. Otherwise the model would be trained with the
 # specified parameter in config
